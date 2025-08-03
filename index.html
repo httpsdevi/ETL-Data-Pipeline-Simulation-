@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETL Pipeline Simulation - Azure Data Factory</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #0078d4, #106ebe);
+            color: white;
+            border-radius: 15px;
+        }
+
+        .pipeline-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #0078d4;
+            color: white;
+        }
+
+        .btn-success {
+            background: #107c10;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ff8c00;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #d13438;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .pipeline-stages {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stage {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #0078d4;
+            transition: all 0.3s ease;
+        }
+
+        .stage:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .stage h3 {
+            color: #0078d4;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.running {
+            background: #ff8c00;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-indicator.success {
+            background: #107c10;
+        }
+
+        .status-indicator.error {
+            background: #d13438;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .data-preview {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #0078d4;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0078d4, #106ebe);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .schedule-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .error-details {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .transformation-rules {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .sql-output {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏭 ETL Pipeline Simulation - Azure Data Factory</h1>
+            <p>Comprehensive data pipeline with CSV ingestion, transformation, and SQL loading</p>
+        </div>
+
+        <div class="pipeline-controls">
+            <button class="btn btn-primary" onclick="startFullPipeline()">🚀 Run Full Pipeline</button>
+            <button class="btn btn-success" onclick="generateSampleData()">📊 Generate Sample Data</button>
+            <button class="btn btn-warning" onclick="validateData()">✅ Validate Data</button>
+            <button class="btn btn-danger" onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-value" id="recordsProcessed">0</div>
+                <div class="metric-label">Records Processed</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="processingTime">0s</div>
+                <div class="metric-label">Processing Time</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="errorCount">0</div>
+                <div class="metric-label">Errors</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="throughput">0</div>
+                <div class="metric-label">Records/sec</div>
+            </div>
+        </div>
+
+        <div class="pipeline-stages">
+            <div class="stage" id="extractStage">
+                <h3><span class="status-indicator" id="extractStatus"></span> Extract - Azure Blob Storage</h3>
+                <p>Reading CSV files from Azure Blob Storage container</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="extractProgress"></div>
+                </div>
+                <div class="data-preview" id="extractPreview">
+                    Waiting for data extraction...
+                </div>
+            </div>
+
+            <div class="stage" id="transformStage">
+                <h3><span class="status-indicator" id="transformStatus"></span> Transform - Data Processing</h3>
+                <p>Applying business rules and data transformations</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="transformProgress"></div>
+                </div>
+                <div class="transformation-rules">
+                    <strong>Applied Transformations:</strong><br>
+                    • Data type conversions<br>
+                    • Null value handling<br>
+                    • Date standardization<br>
+                    • Revenue calculations<br>
+                    • Data validation rules
+                </div>
+                <div class="data-preview" id="transformPreview">
+                    Waiting for transformation...
+                </div>
+            </div>
+
+            <div class="stage" id="loadStage">
+                <h3><span class="status-indicator" id="loadStatus"></span> Load - SQL Database</h3>
+                <p>Loading transformed data into Azure SQL Database</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="loadProgress"></div>
+                </div>
+                <div class="sql-output" id="loadPreview">
+                    Waiting for data load...
+                </div>
+            </div>
+        </div>
+
+        <div class="schedule-info">
+            <h4>⏰ Pipeline Schedule Configuration</h4>
+            <p><strong>Trigger Type:</strong> Schedule Trigger</p>
+            <p><strong>Frequency:</strong> Daily at 2:00 AM UTC</p>
+            <p><strong>Retry Policy:</strong> 3 attempts with 5-minute intervals</p>
+            <p><strong>Timeout:</strong> 30 minutes</p>
+            <p><strong>Next Run:</strong> <span id="nextRun"></span></p>
+        </div>
+
+        <div class="log-container" id="logContainer">
+            <div>Azure Data Factory ETL Pipeline - Ready to execute</div>
+            <div>=====================================</div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data generation
+        function generateCustomerData(count = 1000) {
+            const customers = [];
+            const regions = ['North', 'South', 'East', 'West', 'Central'];
+            const segments = ['Enterprise', 'SMB', 'Consumer'];
+            const statuses = ['Active', 'Inactive', 'Pending'];
+            
+            for (let i = 1; i <= count; i++) {
+                customers.push({
+                    customer_id: i,
+                    customer_name: `Customer ${i}`,
+                    email: `customer${i}@company.com`,
+                    region: regions[Math.floor(Math.random() * regions.length)],
+                    segment: segments[Math.floor(Math.random() * segments.length)],
+                    signup_date: new Date(2020 + Math.floor(Math.random() * 5), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+                    annual_revenue: Math.floor(Math.random() * 1000000) + 10000,
+                    status: statuses[Math.floor(Math.random() * statuses.length)],
+                    last_updated: new Date().toISOString()
+                });
+            }
+            return customers;
+        }
+
+        let sampleData = [];
+        let transformedData = [];
+        let startTime;
+
+        function logMessage(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            
+            if (type === 'error') logEntry.style.color = '#ff6b6b';
+            if (type === 'success') logEntry.style.color = '#51cf66';
+            if (type === 'warning') logEntry.style.color = '#ffd43b';
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateMetric(id, value) {
+            document.getElementById(id).textContent = value;
+        }
+
+        function updateProgress(stageId, percentage) {
+            document.getElementById(stageId).style.width = percentage + '%';
+        }
+
+        function updateStatus(stageId, status) {
+            const indicator = document.getElementById(stageId);
+            indicator.className = `status-indicator ${status}`;
+        }
+
+        function updateNextRun() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(2, 0, 0, 0);
+            document.getElementById('nextRun').textContent = tomorrow.toLocaleString();
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function extractData() {
+            logMessage('🔄 Starting data extraction from Azure Blob Storage...', 'info');
+            updateStatus('extractStatus', 'running');
+            
+            // Simulate file discovery and reading
+            await sleep(500);
+            logMessage('📁 Discovered 3 CSV files in storage container: /data/customers/', 'info');
+            
+            for (let i = 0; i <= 100; i += 10) {
+                updateProgress('extractProgress', i);
+                await sleep(200);
+            }
+            
+            // Generate sample data
+            sampleData = generateCustomerData(1000);
+            
+            // Show preview
+            const preview = sampleData.slice(0, 5).map(record => 
+                `${record.customer_id},${record.customer_name},${record.email},${record.region},${record.segment},${record.signup_date},${record.annual_revenue},${record.status}`
+            ).join('\n');
+            
+            document.getElementById('extractPreview').innerHTML = 
+                `<strong>Sample CSV Data (5 of ${sampleData.length} records):</strong><br>` +
+                `customer_id,customer_name,email,region,segment,signup_date,annual_revenue,status<br>` +
+                preview;
+            
+            updateStatus('extractStatus', 'success');
+            logMessage(`✅ Successfully extracted ${sampleData.length} records from CSV files`, 'success');
+            updateMetric('recordsProcessed', sampleData.length);
+            
+            return sampleData;
+        }
+
+        async function transformData(data) {
+            logMessage('🔄 Starting data transformation process...', 'info');
+            updateStatus('transformStatus', 'running');
+            
+            transformedData = [];
+            let errors = 0;
+            
+            for (let i = 0; i < data.length; i++) {
+                const record = data[i];
+                
+                try {
+                    // Simulate transformation logic
+                    const transformed = {
+                        customer_id: record.customer_id,
+                        customer_name: record.customer_name?.trim() || 'Unknown',
+                        email: record.email?.toLowerCase() || null,
+                        region: record.region || 'Unassigned',
+                        segment: record.segment || 'Other',
+                        signup_date: new Date(record.signup_date).toISOString().split('T')[0],
+                        annual_revenue: parseFloat(record.annual_revenue) || 0,
+                        revenue_tier: getRevenueTier(record.annual_revenue),
+                        status: record.status || 'Unknown',
+                        customer_lifetime_value: calculateCLV(record.annual_revenue, record.signup_date),
+                        days_since_signup: Math.floor((new Date() - new Date(record.signup_date)) / (1000 * 60 * 60 * 24)),
+                        processed_at: new Date().toISOString(),
+                        data_quality_score: calculateDataQuality(record)
+                    };
+                    
+                    // Data validation
+                    if (!transformed.email || !transformed.email.includes('@')) {
+                        throw new Error(`Invalid email for customer ${record.customer_id}`);
+                    }
+                    
+                    transformedData.push(transformed);
+                } catch (error) {
+                    errors++;
+                    logMessage(`⚠️ Transformation error for record ${record.customer_id}: ${error.message}`, 'warning');
+                }
+                
+                // Update progress
+                const progress = Math.floor((i / data.length) * 100);
+                updateProgress('transformProgress', progress);
+                
+                if (i % 100 === 0) {
+                    await sleep(100);
+                }
+            }
+            
+            // Show transformation preview
+            const preview = transformedData.slice(0, 3).map(record => 
+                `ID: ${record.customer_id}, Name: ${record.customer_name}, Tier: ${record.revenue_tier}, CLV: $${record.customer_lifetime_value.toLocaleString()}`
+            ).join('\n');
+            
+            document.getElementById('transformPreview').innerHTML = 
+                `<strong>Transformed Data Sample:</strong><br>${preview}<br><br>` +
+                `<strong>Transformation Summary:</strong><br>` +
+                `• Added revenue tier classification<br>` +
+                `• Calculated customer lifetime value<br>` +
+                `• Computed days since signup<br>` +
+                `• Applied data quality scoring`;
+            
+            updateStatus('transformStatus', 'success');
+            updateMetric('errorCount', errors);
+            logMessage(`✅ Transformation completed. ${transformedData.length} records processed, ${errors} errors`, 'success');
+            
+            return transformedData;
+        }
+
+        function getRevenueTier(revenue) {
+            if (revenue >= 500000) return 'Platinum';
+            if (revenue >= 100000) return 'Gold';
+            if (revenue >= 50000) return 'Silver';
+            return 'Bronze';
+        }
+
+        function calculateCLV(annualRevenue, signupDate) {
+            const yearsActive = (new Date() - new Date(signupDate)) / (1000 * 60 * 60 * 24 * 365);
+            return Math.floor(annualRevenue * yearsActive * 1.2);
+        }
+
+        function calculateDataQuality(record) {
+            let score = 100;
+            if (!record.email || !record.email.includes('@')) score -= 20;
+            if (!record.customer_name || record.customer_name.trim() === '') score -= 15;
+            if (!record.region) score -= 10;
+            if (record.annual_revenue <= 0) score -= 15;
+            if (!record.signup_date) score -= 20;
+            return Math.max(score, 0);
+        }
+
+        async function loadData(data) {
+            logMessage('🔄 Starting data load to Azure SQL Database...', 'info');
+            updateStatus('loadStatus', 'running');
+            
+            // Simulate database connection and batch loading
+            logMessage('🔗 Connecting to Azure SQL Database...', 'info');
+            await sleep(1000);
+            logMessage('✅ Database connection established', 'success');
+            
+            // Simulate batch processing
+            const batchSize = 100;
+            let totalLoaded = 0;
+            
+            for (let i = 0; i < data.length; i += batchSize) {
+                const batch = data.slice(i, i + batchSize);
+                
+                // Simulate SQL insert
+                await sleep(300);
+                
+                totalLoaded += batch.length;
+                const progress = Math.floor((totalLoaded / data.length) * 100);
+                updateProgress('loadProgress', progress);
+                
+                logMessage(`📊 Loaded batch ${Math.floor(i/batchSize) + 1}: ${batch.length} records`, 'info');
+            }
+            
+            // Show SQL output preview
+            document.getElementById('loadPreview').innerHTML = 
+                `<strong>SQL Database Load Summary:</strong><br><br>` +
+                `INSERT INTO dbo.customers_staging<br>` +
+                `(customer_id, customer_name, email, region, segment, signup_date,<br>` +
+                ` annual_revenue, revenue_tier, status, customer_lifetime_value,<br>` +
+                ` days_since_signup, processed_at, data_quality_score)<br>` +
+                `VALUES (...)<br><br>` +
+                `<strong>Load Statistics:</strong><br>` +
+                `• Total records inserted: ${totalLoaded}<br>` +
+                `• Batch size: ${batchSize}<br>` +
+                `• Load duration: ${((Date.now() - startTime) / 1000).toFixed(1)}s<br>` +
+                `• Target table: dbo.customers_staging<br>` +
+                `• Index rebuild: Scheduled post-load`;
+            
+            updateStatus('loadStatus', 'success');
+            logMessage(`✅ Data load completed successfully. ${totalLoaded} records inserted`, 'success');
+            
+            return totalLoaded;
+        }
+
+        async function startFullPipeline() {
+            startTime = Date.now();
+            
+            // Reset metrics
+            updateMetric('recordsProcessed', '0');
+            updateMetric('processingTime', '0s');
+            updateMetric('errorCount', '0');
+            updateMetric('throughput', '0');
+            
+            // Reset progress bars
+            updateProgress('extractProgress', 0);
+            updateProgress('transformProgress', 0);
+            updateProgress('loadProgress', 0);
+            
+            // Reset status indicators
+            updateStatus('extractStatus', '');
+            updateStatus('transformStatus', '');
+            updateStatus('loadStatus', '');
+            
+            logMessage('🚀 Starting ETL Pipeline execution...', 'info');
+            logMessage('📋 Pipeline: Customer Data Processing v2.1', 'info');
+            
+            try {
+                // Extract phase
+                const extractedData = await extractData();
+                
+                // Transform phase
+                const transformedData = await transformData(extractedData);
+                
+                // Load phase
+                const loadedRecords = await loadData(transformedData);
+                
+                // Final metrics
+                const totalTime = (Date.now() - startTime) / 1000;
+                const throughput = Math.floor(loadedRecords / totalTime);
+                
+                updateMetric('processingTime', `${totalTime.toFixed(1)}s`);
+                updateMetric('throughput', throughput);
+                
+                logMessage('🎉 ETL Pipeline completed successfully!', 'success');
+                logMessage(`📊 Final Stats: ${loadedRecords} records processed in ${totalTime.toFixed(1)}s (${throughput} records/sec)`, 'success');
+                
+            } catch (error) {
+                logMessage(`❌ Pipeline failed: ${error.message}`, 'error');
+                updateStatus('loadStatus', 'error');
+            }
+        }
+
+        function generateSampleData() {
+            sampleData = generateCustomerData(Math.floor(Math.random() * 500) + 500);
+            logMessage(`📊 Generated ${sampleData.length} sample customer records`, 'success');
+            updateMetric('recordsProcessed', sampleData.length);
+        }
+
+        function validateData() {
+            if (sampleData.length === 0) {
+                logMessage('⚠️ No data available for validation. Generate sample data first.', 'warning');
+                return;
+            }
+            
+            logMessage('🔍 Running data validation checks...', 'info');
+            
+            let validRecords = 0;
+            let issues = 0;
+            
+            sampleData.forEach(record => {
+                if (record.email && record.email.includes('@') && record.customer_name && record.annual_revenue > 0) {
+                    validRecords++;
+                } else {
+                    issues++;
+                }
+            });
+            
+            const validationRate = ((validRecords / sampleData.length) * 100).toFixed(1);
+            
+            logMessage(`✅ Validation completed: ${validRecords}/${sampleData.length} records valid (${validationRate}%)`, 'success');
+            if (issues > 0) {
+                logMessage(`⚠️ Found ${issues} records with data quality issues`, 'warning');
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = 
+                '<div>Azure Data Factory ETL Pipeline - Ready to execute</div>' +
+                '<div>=====================================</div>';
+        }
+
+        // Initialize
+        updateNextRun();
+        setInterval(updateNextRun, 60000); // Update every minute
+        
+        // Auto-generate sample data on load
+        generateSampleData();
+    </script>
+</body>
+</html>
