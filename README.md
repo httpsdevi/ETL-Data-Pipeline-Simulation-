@@ -283,6 +283,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ⭐ **Star this repository if you found it helpful!**
 
-![Pipeline Architecture](https://via.placeholder.com/800x400/0078d4/ffffff?text=ETL+Pipeline+Architecture)
-
-> **Note**: This is a simulation for educational and portfolio purposes. For production use, ensure proper security, compliance, and performance testing.
